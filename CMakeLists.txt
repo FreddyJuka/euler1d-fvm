@@ -55,4 +55,8 @@ if(EULER1D_BUILD_TESTS)
     add_executable(test_eos tests/test_eos.cpp)
     target_link_libraries(test_eos PRIVATE euler1d_core GTest::gtest_main)
     gtest_discover_tests(test_eos)
+
+    add_executable(test_flux tests/test_flux.cpp)
+    target_link_libraries(test_flux PRIVATE euler1d_core GTest::gtest_main)
+    gtest_discover_tests(test_flux)
 endif()
