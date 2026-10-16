@@ -35,3 +35,24 @@ foreach(target euler1d_core euler1d)
         $<$<CXX_COMPILER_ID:MSVC>:/W4>
     )
 endforeach()
+
+option(EULER1D_BUILD_TESTS "Build unit tests" ON)
+
+if(EULER1D_BUILD_TESTS)
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+
+    enable_testing()
+    include(GoogleTest)
+
+    add_executable(test_eos tests/test_eos.cpp)
+    target_link_libraries(test_eos PRIVATE euler1d_core GTest::gtest_main)
+    gtest_discover_tests(test_eos)
+endif()
