@@ -14,7 +14,10 @@ Conserved physical_flux(const Primitive& W, const IdealGas& gas);
 
 Conserved rusanov_flux(const Primitive& WL, const Primitive& WR, const IdealGas& gas);
 
-enum class FluxScheme { Rusanov };
+// HLLC (Toro, Ch. 10) with Einfeldt/Roe-averaged wave speed estimates.
+Conserved hllc_flux(const Primitive& WL, const Primitive& WR, const IdealGas& gas);
+
+enum class FluxScheme { Rusanov, HLLC };
 
 using FluxFunction = Conserved (*)(const Primitive&, const Primitive&, const IdealGas&);
 
