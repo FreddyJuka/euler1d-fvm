@@ -1,0 +1,29 @@
+# Build output
+build/
+build-*/
+
+# Simulation output
+results/
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+Makefile
+compile_commands.json
+_deps/
+Testing/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Data and figures
+*.csv
+*.png
+
+# Editors
+.vscode/
