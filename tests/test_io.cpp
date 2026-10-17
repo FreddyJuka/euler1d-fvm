@@ -88,6 +88,20 @@ TEST(Config, Errors) {
     EXPECT_THROW(parse(kRiemann + no_limiter), std::runtime_error);
 }
 
+TEST(Config, RejectsMalformedValues) {
+    const auto with = [](const std::string& from, const std::string& to) {
+        std::string text = kRiemann + kGeneral;
+        const auto pos = text.find(from);
+        EXPECT_NE(pos, std::string::npos);
+        text.replace(pos, from.size(), to);
+        return text;
+    };
+    EXPECT_THROW(parse(with("n_cells = 100", "n_cells = 1e3")), std::runtime_error);
+    EXPECT_THROW(parse(with("problem = riemann", "problem = bogus_problem")), std::runtime_error);
+    EXPECT_THROW(parse(with("flux = HLLC", "flux = bogus_flux")), std::runtime_error);
+    EXPECT_THROW(parse(kRiemann + kGeneral + "x0 = 0.4\n"), std::runtime_error);  // duplicate key
+}
+
 TEST(Config, ErrorReportsLineNumber) {
     try {
         parse("problem = riemann\n\nbogus = 1\n");

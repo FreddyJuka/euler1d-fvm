@@ -82,3 +82,19 @@ jobs:
           path: |
             results/ci_convergence/convergence.md
             results/ci_convergence/convergence_L1.png
+      - name: Shock tubes
+        run: scripts/run_shock_tubes.sh
+      - name: Check shock-tube errors
+        run: |
+          python python/check_shock_tube.py results/shock_tubes/sod_metrics.csv \
+            --label "HLLC MUSCL minmod" --max-l1 4.702e-3
+          python python/check_shock_tube.py results/shock_tubes/lax_metrics.csv \
+            --label "HLLC MUSCL minmod" --max-l1 1.814e-2
+      - name: Upload shock-tube report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shock-tubes
+          path: |
+            results/shock_tubes/*_metrics.csv
+            results/shock_tubes/*_comparison.png

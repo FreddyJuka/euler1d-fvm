@@ -65,6 +65,7 @@ def main() -> None:
     for ax in axes[2:]:
         ax.set_xlabel("x")
 
+    metrics = []
     for k, spec in enumerate(args.run):
         run_dir, _, label = spec.partition(":")
         label = label or run_dir
@@ -80,6 +81,9 @@ def main() -> None:
         dx = (x_max - x_min) / len(x)
         l1 = np.sum(np.abs(data["rho"] - rho_ex)) * dx
         print(f"{args.config.stem} | {label} | L1_rho = {l1:.6e}")
+        i_max = int(np.argmax(data["e"]))
+        metrics.append([args.config.stem, label, len(x), f"{l1:.6e}", f"{data['e'][i_max]:.6e}",
+                        f"{x[i_max]:.6e}", f"{exact[3].max():.6e}"])
 
     axes[0].legend()
     if args.title:
@@ -88,6 +92,13 @@ def main() -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.out, dpi=150)
     plt.close(fig)
+
+    metrics_path = args.out.parent / f"{args.config.stem}_metrics.csv"
+    with metrics_path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["case", "label", "n_cells", "L1_rho", "e_max_numerical",
+                         "x_at_e_max", "e_max_exact"])
+        writer.writerows(metrics)
 
 
 if __name__ == "__main__":

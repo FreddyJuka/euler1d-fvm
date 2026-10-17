@@ -90,7 +90,25 @@ void expect_flux_near(const Conserved& a, const Conserved& b) {
     EXPECT_NEAR(a.E, b.E, 1e-14);
 }
 
+// Compares to 1e-13 relative (against max(|exact|, 1e-300) per component).
+void expect_flux_rel(const Conserved& F, double rho, double mom, double E) {
+    EXPECT_NEAR(F.rho, rho, 1e-13 * std::abs(rho));
+    EXPECT_NEAR(F.mom, mom, 1e-13 * std::abs(mom));
+    EXPECT_NEAR(F.E, E, 1e-13 * std::abs(E));
+}
+
 }  // namespace
+
+// Reference values: 50-digit mpmath evaluation in tests/python/reference_hllc.py.
+TEST(HLLCFlux, SodInterface) {
+    expect_flux_rel(hllc_flux({1.0, 0.0, 1.0}, {0.125, 0.0, 0.1}, gas),
+                    0.431067162607704, 0.4899544548276895, 1.162864065648505);
+}
+
+TEST(HLLCFlux, GeneralSubsonic) {
+    expect_flux_rel(hllc_flux({1.0, 0.3, 1.0}, {0.5, -0.2, 0.4}, gas),
+                    0.3839562588829281, 1.002215873021761, 1.313962055322934);
+}
 
 TEST(HLLCFlux, Consistency) {
     const Primitive states[] = {
