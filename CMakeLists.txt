@@ -68,4 +68,8 @@ if(EULER1D_BUILD_TESTS)
     add_executable(test_reconstruction tests/test_reconstruction.cpp)
     target_link_libraries(test_reconstruction PRIVATE euler1d_core GTest::gtest_main)
     gtest_discover_tests(test_reconstruction)
+
+    add_executable(test_solver tests/test_solver.cpp)
+    target_link_libraries(test_solver PRIVATE euler1d_core GTest::gtest_main)
+    gtest_discover_tests(test_solver)
 endif()
