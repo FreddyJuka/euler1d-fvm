@@ -17,6 +17,7 @@ add_library(euler1d_core STATIC
     src/flux.cpp
     src/reconstruction.cpp
     src/mesh.cpp
+    src/problems.cpp
     src/boundary.cpp
     src/time_integration.cpp
     src/solver.cpp
@@ -72,4 +73,23 @@ if(EULER1D_BUILD_TESTS)
     add_executable(test_solver tests/test_solver.cpp)
     target_link_libraries(test_solver PRIVATE euler1d_core GTest::gtest_main)
     gtest_discover_tests(test_solver)
+
+    add_executable(test_problems tests/test_problems.cpp)
+    target_link_libraries(test_problems PRIVATE euler1d_core GTest::gtest_main)
+    gtest_discover_tests(test_problems)
+
+    add_executable(test_io tests/test_io.cpp)
+    target_link_libraries(test_io PRIVATE euler1d_core GTest::gtest_main)
+    gtest_discover_tests(test_io)
+
+    # End-to-end CLI runs on the shipped case files.
+    foreach(case density_wave sod lax)
+        add_test(NAME cli_${case}
+                 COMMAND euler1d ${CMAKE_CURRENT_SOURCE_DIR}/cases/${case}.cfg
+                         --n-cells 50 --quiet
+                         --output-dir ${CMAKE_CURRENT_BINARY_DIR}/cli_out/${case})
+    endforeach()
+    add_test(NAME cli_missing_config
+             COMMAND euler1d ${CMAKE_CURRENT_BINARY_DIR}/does_not_exist.cfg --quiet)
+    set_tests_properties(cli_missing_config PROPERTIES WILL_FAIL TRUE)
 endif()
