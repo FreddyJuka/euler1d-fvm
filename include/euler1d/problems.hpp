@@ -47,7 +47,7 @@ double density_wave_cell_average(const DensityWaveParams& params, const Grid& gr
                                  double t);
 
 // Fills interior cells (result has size grid.size(); ghost cells are zero).
-// Throws std::invalid_argument for invalid density-wave parameters.
+// Throws std::invalid_argument for invalid density-wave or Riemann parameters.
 std::vector<Conserved> make_initial_condition(const ProblemConfig& problem, const Grid& grid,
                                               const IdealGas& gas);
 

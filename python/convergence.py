@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -22,6 +23,16 @@ import numpy as np  # noqa: E402
 NORMS = ("L1", "L2", "Linf")
 
 
+def check_complete(run_dir: Path, row: dict[str, str]) -> None:
+    """Exit with an error if the run in ``run_dir`` stopped before t_final."""
+    t_final, t_reached = float(row["t_final"]), float(row["t_reached"])
+    if abs(t_reached - t_final) > 1e-12 * abs(t_final):
+        sys.exit(
+            f"error: run in {run_dir} is truncated: t_reached = {t_reached!r} "
+            f"differs from t_final = {t_final!r}"
+        )
+
+
 def read_runs(root: Path) -> dict[str, list[dict[str, float]]]:
     """Return runs grouped by variant name, sorted by n_cells."""
     groups: dict[str, list[dict[str, float]]] = {}
@@ -29,6 +40,7 @@ def read_runs(root: Path) -> dict[str, list[dict[str, float]]]:
         variant = path.relative_to(root).parts[0]
         with path.open(newline="") as f:
             row = next(csv.DictReader(f))
+        check_complete(path.parent, row)
         groups.setdefault(variant, []).append(
             {
                 "n_cells": int(row["n_cells"]),

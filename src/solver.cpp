@@ -16,7 +16,9 @@ Solver::Solver(const Grid& grid, const IdealGas& gas, const SolverConfig& cfg,
     if (!(cfg.cfl > 0.0 && cfg.cfl <= 1.0)) {
         throw std::invalid_argument("Solver: cfl must be in (0, 1]");
     }
-    if (!(cfg.t_final > 0.0)) throw std::invalid_argument("Solver: t_final must be > 0");
+    if (!(cfg.t_final > 0.0) || !std::isfinite(cfg.t_final)) {
+        throw std::invalid_argument("Solver: t_final must be finite and > 0");
+    }
     if (cfg.max_steps <= 0) throw std::invalid_argument("Solver: max_steps must be > 0");
     if (U_.size() != static_cast<std::size_t>(grid.size())) {
         throw std::invalid_argument("Solver: U0.size() != grid.size()");
@@ -66,6 +68,7 @@ void Solver::check_admissible() const {
 }
 
 double Solver::step(double dt_max) {
+    if (!(dt_max > 0.0)) throw std::invalid_argument("Solver::step: dt_max must be > 0");
     for (int j = grid_.begin(); j < grid_.end(); ++j) W_[j] = gas_.to_primitive(U_[j]);
     const double dt = std::min(compute_dt(W_, grid_, gas_, cfg_.cfl), dt_max);
 

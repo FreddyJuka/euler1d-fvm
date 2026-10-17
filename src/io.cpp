@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <map>
@@ -53,7 +54,10 @@ double to_double(const Entry& e, const std::string& key) {
         std::size_t pos = 0;
         const double v = std::stod(e.value, &pos);
         if (pos != e.value.size()) throw std::invalid_argument("trailing characters");
+        if (!std::isfinite(v)) throw std::domain_error("non-finite");
         return v;
+    } catch (const std::domain_error&) {
+        fail(e.line, "non-finite value '" + e.value + "' for key '" + key + "'");
     } catch (const std::exception&) {
         fail(e.line, "cannot parse '" + e.value + "' as a number for key '" + key + "'");
     }
@@ -215,11 +219,11 @@ void ResidualWriter::write(const StepInfo& info) {
 
 void write_summary_csv(const std::string& path, const SummaryInfo& info) {
     std::ofstream out = open_output(path);
-    out << "problem,n_cells,dx,flux,reconstruction,limiter,cfl,t_final,n_steps,wall_time_s,"
+    out << "problem,n_cells,dx,flux,reconstruction,limiter,cfl,t_final,t_reached,n_steps,wall_time_s,"
            "L1_rho,L2_rho,Linf_rho\n";
     out << info.problem << ',' << info.n_cells << ',' << csv_double(info.dx) << ','
         << info.flux << ',' << info.reconstruction << ',' << info.limiter << ','
-        << csv_double(info.cfl) << ',' << csv_double(info.t_final) << ',' << info.n_steps << ','
+        << csv_double(info.cfl) << ',' << csv_double(info.t_final) << ',' << csv_double(info.t_reached) << ',' << info.n_steps << ','
         << csv_double(info.wall_time_s) << ',';
     if (info.rho_errors) {
         out << csv_double(info.rho_errors->L1) << ',' << csv_double(info.rho_errors->L2) << ','

@@ -1,4 +1,5 @@
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -157,4 +158,36 @@ TEST(Solver, MaxStepsStop) {
     const RunStats stats = solver.run();
     EXPECT_EQ(stats.n_steps, 3);
     EXPECT_LT(stats.t_final_reached, 0.2);
+}
+
+TEST(Solver, ToroTest2VacuumThrows) {
+    const Grid grid(100, 0.0, 1.0);
+    const SolverConfig cfg{FluxScheme::HLLC,
+                           {ReconstructionScheme::MUSCL, Limiter::Unlimited},
+                           BoundaryType::Transmissive,
+                           BoundaryType::Transmissive,
+                           0.8,
+                           0.15,
+                           100000};
+    std::vector<Conserved> U(grid.size());
+    for (int i = 0; i < grid.size(); ++i) {
+        U[i] = gas.to_conserved(grid.x_center(i) < 0.5 ? Primitive{1.0, -2.0, 0.4}
+                                                      : Primitive{1.0, 2.0, 0.4});
+    }
+    Solver solver(grid, gas, cfg, U);
+    EXPECT_THROW(solver.run(), std::runtime_error);
+}
+
+TEST(Solver, StepRejectsNonPositiveDtMax) {
+    const Grid grid(20, 0.0, 1.0);
+    Solver solver(grid, gas, sod_config(), make_state(grid, sod));
+    EXPECT_THROW(solver.step(0.0), std::invalid_argument);
+    EXPECT_THROW(solver.step(-1.0), std::invalid_argument);
+}
+
+TEST(Solver, InfiniteTFinalThrows) {
+    const Grid grid(20, 0.0, 1.0);
+    SolverConfig cfg = sod_config();
+    cfg.t_final = std::numeric_limits<double>::infinity();
+    EXPECT_THROW(Solver(grid, gas, cfg, make_state(grid, sod)), std::invalid_argument);
 }

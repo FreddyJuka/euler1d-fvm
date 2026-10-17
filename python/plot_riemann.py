@@ -6,6 +6,8 @@ Usage: plot_riemann.py --config CASE.cfg --run DIR:LABEL [--run DIR:LABEL ...] -
 from __future__ import annotations
 
 import argparse
+import csv
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -27,6 +29,16 @@ def exact_on(cfg: dict, x: np.ndarray) -> tuple[np.ndarray, ...]:
     WR = (float(cfg["rho_R"]), float(cfg["u_R"]), float(cfg["p_R"]))
     rho, u, p = solve(WL, WR, g, x, float(cfg["t_final"]), float(cfg["x0"]))
     return rho, u, p, p / ((g - 1.0) * rho)
+
+
+def check_complete(run_dir: Path, row: dict[str, str]) -> None:
+    """Exit with an error if the run in ``run_dir`` stopped before t_final."""
+    t_final, t_reached = float(row["t_final"]), float(row["t_reached"])
+    if abs(t_reached - t_final) > 1e-12 * abs(t_final):
+        sys.exit(
+            f"error: run in {run_dir} is truncated: t_reached = {t_reached!r} "
+            f"differs from t_final = {t_final!r}"
+        )
 
 
 def main() -> None:
@@ -56,6 +68,8 @@ def main() -> None:
     for k, spec in enumerate(args.run):
         run_dir, _, label = spec.partition(":")
         label = label or run_dir
+        with (Path(run_dir) / "summary.csv").open(newline="") as f:
+            check_complete(Path(run_dir), next(csv.DictReader(f)))
         data = np.genfromtxt(Path(run_dir) / "solution_final.csv", delimiter=",", names=True)
         x = data["x"]
         every = max(1, len(x) // 60)

@@ -87,3 +87,21 @@ TEST(Problems, ParseProblemType) {
     EXPECT_EQ(parse_problem_type("DENSITY_WAVE"), ProblemType::DensityWave);
     EXPECT_THROW(parse_problem_type("sedov"), std::invalid_argument);
 }
+
+TEST(Problems, InvalidRiemannThrows) {
+    ProblemConfig p{};
+    p.type = ProblemType::Riemann;
+    p.riemann = {0.5, 1.0, 0.0, 1.0, 0.125, 0.0, 0.1};
+    const Grid grid(10, 0.0, 1.0);
+    EXPECT_NO_THROW(make_initial_condition(p, grid, gas));
+
+    ProblemConfig bad = p;
+    bad.riemann.rho_L = -1.0;
+    EXPECT_THROW(make_initial_condition(bad, grid, gas), std::invalid_argument);
+    bad = p;
+    bad.riemann.p_R = 0.0;
+    EXPECT_THROW(make_initial_condition(bad, grid, gas), std::invalid_argument);
+    bad = p;
+    bad.riemann.u_L = std::nan("");
+    EXPECT_THROW(make_initial_condition(bad, grid, gas), std::invalid_argument);
+}

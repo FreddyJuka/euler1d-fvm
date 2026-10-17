@@ -42,13 +42,14 @@ struct RunStats {
 class Solver {
 public:
     // U0.size() must equal grid.size() (ghost values are ignored). Throws
-    // std::invalid_argument for invalid boundaries, cfl not in (0,1], t_final <= 0,
+    // std::invalid_argument for invalid boundaries, cfl not in (0,1], t_final not finite or <= 0,
     // max_steps <= 0, or a size mismatch.
     Solver(const Grid& grid, const IdealGas& gas, const SolverConfig& cfg,
            std::vector<Conserved> U0);
 
     // Advances one SSP-RK3 step with dt = min(compute_dt, dt_max); returns dt used.
-    // Throws std::runtime_error if any interior cell becomes inadmissible.
+    // Throws std::invalid_argument if !(dt_max > 0), std::runtime_error if any interior cell
+    // becomes inadmissible.
     double step(double dt_max);
 
     // Runs until t_final or max_steps; calls the observer after each step if set.

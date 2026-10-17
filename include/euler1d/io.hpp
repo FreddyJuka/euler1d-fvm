@@ -57,6 +57,7 @@ struct SummaryInfo {
     std::string limiter;  // "none" if unused
     double cfl;
     double t_final;
+    double t_reached;
     int n_steps;
     double wall_time_s;
     std::optional<ErrorNorms> rho_errors;  // density_wave only

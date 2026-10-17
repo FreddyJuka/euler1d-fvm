@@ -120,12 +120,24 @@ TEST(Csv, Writers) {
     EXPECT_EQ(count_lines(dir / "res.csv", &header), 1 + 2);
     EXPECT_EQ(header, "step,t,dt,res_rho,res_mom,res_E");
 
-    SummaryInfo s{"density_wave", 8, 0.125, "hllc", "muscl", "vanleer", 0.8, 1.0, 10, 0.01,
+    SummaryInfo s{"density_wave", 8, 0.125, "hllc", "muscl", "vanleer", 0.8, 1.0, 1.0, 10, 0.01,
                   ErrorNorms{1.0, 2.0, 3.0}};
     write_summary_csv((dir / "summary.csv").string(), s);
     EXPECT_EQ(count_lines(dir / "summary.csv", &header), 2);
     EXPECT_EQ(header,
-              "problem,n_cells,dx,flux,reconstruction,limiter,cfl,t_final,n_steps,wall_time_s,"
+              "problem,n_cells,dx,flux,reconstruction,limiter,cfl,t_final,t_reached,n_steps,wall_time_s,"
               "L1_rho,L2_rho,Linf_rho");
     std::filesystem::remove_all(dir);
+}
+
+TEST(Config, RejectsNonFiniteNumbers) {
+    for (const char* bad : {"nan", "inf"}) {
+        const std::string text = "problem = riemann\nx0 = " + std::string(bad) +
+                                 "\nrho_L = 1.0\nu_L = 0.0\np_L = 1.0\n"
+                                 "rho_R = 0.125\nu_R = 0.0\np_R = 0.1\n" + kGeneral;
+        EXPECT_THROW(parse(text), std::runtime_error) << bad;
+    }
+    std::string text = kRiemann + kGeneral;
+    text.replace(text.find("t_final = 0.2"), 13, "t_final = inf");
+    EXPECT_THROW(parse(text), std::runtime_error);
 }

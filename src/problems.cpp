@@ -4,6 +4,8 @@
 #include <cctype>
 #include <cmath>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace euler1d {
 
@@ -17,6 +19,18 @@ void validate(const DensityWaveParams& p) {
     }
     if (!(p.p0 > 0.0)) throw std::invalid_argument("density_wave: p0 must be > 0");
     if (p.wavenumber < 1) throw std::invalid_argument("density_wave: wavenumber must be >= 1");
+}
+
+void validate(const RiemannParams& r) {
+    const std::pair<const char*, double> positive[] = {
+        {"rho_L", r.rho_L}, {"rho_R", r.rho_R}, {"p_L", r.p_L}, {"p_R", r.p_R}};
+    for (const auto& [key, v] : positive) {
+        if (!(v > 0.0) || !std::isfinite(v)) {
+            throw std::invalid_argument(std::string("riemann: ") + key + " must be finite and > 0");
+        }
+    }
+    if (!std::isfinite(r.u_L)) throw std::invalid_argument("riemann: u_L must be finite");
+    if (!std::isfinite(r.u_R)) throw std::invalid_argument("riemann: u_R must be finite");
 }
 
 }  // namespace
@@ -45,6 +59,7 @@ std::vector<Conserved> make_initial_condition(const ProblemConfig& problem, cons
     std::vector<Conserved> U(grid.size(), Conserved{0.0, 0.0, 0.0});
     if (problem.type == ProblemType::Riemann) {
         const RiemannParams& r = problem.riemann;
+        validate(r);
         const Conserved UL = gas.to_conserved({r.rho_L, r.u_L, r.p_L});
         const Conserved UR = gas.to_conserved({r.rho_R, r.u_R, r.p_R});
         for (int i = grid.begin(); i < grid.end(); ++i) {

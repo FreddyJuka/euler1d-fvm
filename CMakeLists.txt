@@ -124,4 +124,17 @@ if(EULER1D_BUILD_TESTS)
     add_test(NAME cli_missing_config
              COMMAND euler1d ${CMAKE_CURRENT_BINARY_DIR}/does_not_exist.cfg --quiet)
     set_tests_properties(cli_missing_config PROPERTIES WILL_FAIL TRUE)
+
+    # A run truncated by max_steps must warn on stderr and exit with status 2.
+    # Relative output_dir in the config resolves against the build directory.
+    add_test(NAME cli_max_steps_warning
+             COMMAND euler1d ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/sod_max_steps.cfg --quiet
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_tests_properties(cli_max_steps_warning PROPERTIES
+        PASS_REGULAR_EXPRESSION "max_steps reached")
+    add_test(NAME cli_max_steps_exit_code
+             COMMAND sh -c "\"$0\" \"$1\" --quiet 2>/dev/null; test $? -eq 2"
+                     $<TARGET_FILE:euler1d>
+                     ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/sod_max_steps.cfg
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()

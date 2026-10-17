@@ -140,9 +140,12 @@ int run_cli(int argc, char** argv) {
                         muscl && !cfg.limiter_name.empty() ? cfg.limiter_name : "none",
                         cfg.solver.cfl,
                         cfg.solver.t_final,
+                        stats.t_final_reached,
                         stats.n_steps,
                         wall,
                         errors};
+    const bool truncated =
+        stats.t_final_reached < cfg.solver.t_final * (1.0 - 1e-12);
     write_summary_csv((dir / "summary.csv").string(), summary);
 
     if (!quiet) {
@@ -154,6 +157,11 @@ int run_cli(int argc, char** argv) {
                         errors->Linf);
         }
         std::printf("\n");
+    }
+    if (truncated) {
+        std::cerr << "euler1d: warning: max_steps reached at t = " << stats.t_final_reached
+                  << " before t_final = " << cfg.solver.t_final << std::endl;
+        return 2;
     }
     return 0;
 }
