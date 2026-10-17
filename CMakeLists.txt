@@ -16,6 +16,7 @@ add_library(euler1d_core STATIC
     src/eos.cpp
     src/flux.cpp
     src/reconstruction.cpp
+    src/mesh.cpp
     src/boundary.cpp
     src/time_integration.cpp
     src/solver.cpp
@@ -59,4 +60,8 @@ if(EULER1D_BUILD_TESTS)
     add_executable(test_flux tests/test_flux.cpp)
     target_link_libraries(test_flux PRIVATE euler1d_core GTest::gtest_main)
     gtest_discover_tests(test_flux)
+
+    add_executable(test_mesh_boundary tests/test_mesh_boundary.cpp)
+    target_link_libraries(test_mesh_boundary PRIVATE euler1d_core GTest::gtest_main)
+    gtest_discover_tests(test_mesh_boundary)
 endif()
