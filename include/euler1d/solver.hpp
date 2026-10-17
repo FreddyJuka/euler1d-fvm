@@ -60,7 +60,7 @@ public:
     const Grid& grid() const { return grid_; }
 
 private:
-    // out_interior = L(U_in); U_in is copied, so its ghost cells are ignored.
+    // L = L(U_in) on interior cells; U_in is copied, so its ghost cells are ignored.
     void spatial_operator(const std::vector<Conserved>& U_in, std::vector<Conserved>& L);
     void check_admissible() const;
 

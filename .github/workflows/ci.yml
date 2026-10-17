@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -36,6 +39,8 @@ jobs:
     env:
       CC: gcc
       CXX: g++
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+      ASAN_OPTIONS: detect_leaks=1
     steps:
       - uses: actions/checkout@v4
       - name: Configure
@@ -76,6 +81,7 @@ jobs:
           python python/check_convergence.py results/ci_convergence/convergence.csv \
             --variant hllc_first_order --norm L1 --min 0.85 --max 1.1
       - name: Upload convergence report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: convergence

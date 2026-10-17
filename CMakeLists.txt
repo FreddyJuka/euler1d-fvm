@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 
 project(euler1d-fvm LANGUAGES CXX)
 
@@ -36,6 +36,10 @@ option(EULER1D_SANITIZE "Build with AddressSanitizer and UBSan (GCC/Clang only)"
 
 # Applies the project-wide error and sanitizer options to a target.
 function(euler1d_configure_target target)
+    target_compile_options(${target} PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
+        $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    )
     if(EULER1D_WARNINGS_AS_ERRORS)
         if(MSVC)
             target_compile_options(${target} PRIVATE /WX)
@@ -45,16 +49,13 @@ function(euler1d_configure_target target)
     endif()
     if(EULER1D_SANITIZE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(${target} PRIVATE
-            -fsanitize=address,undefined -fno-omit-frame-pointer)
-        target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+            -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+        target_link_options(${target} PRIVATE
+            -fsanitize=address,undefined -fno-sanitize-recover=all)
     endif()
 endfunction()
 
 foreach(target euler1d_core euler1d)
-    target_compile_options(${target} PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
-        $<$<CXX_COMPILER_ID:MSVC>:/W4>
-    )
     euler1d_configure_target(${target})
 endforeach()
 
@@ -65,6 +66,7 @@ if(EULER1D_BUILD_TESTS)
     FetchContent_Declare(
         googletest
         URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+        URL_HASH SHA256=8ad598c73ad796e0d8280b082cebd82a630d73e73cd3c70057938a6501bba5d7
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
@@ -123,7 +125,8 @@ if(EULER1D_BUILD_TESTS)
                      --output-dir ${CMAKE_CURRENT_BINARY_DIR}/cli_out/overrides)
     add_test(NAME cli_missing_config
              COMMAND euler1d ${CMAKE_CURRENT_BINARY_DIR}/does_not_exist.cfg --quiet)
-    set_tests_properties(cli_missing_config PROPERTIES WILL_FAIL TRUE)
+    set_tests_properties(cli_missing_config PROPERTIES
+        PASS_REGULAR_EXPRESSION "cannot open config file")
 
     # A run truncated by max_steps must warn on stderr and exit with status 2.
     # Relative output_dir in the config resolves against the build directory.

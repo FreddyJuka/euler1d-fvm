@@ -1,6 +1,6 @@
 #pragma once
 
-// Time advancement schemes and CFL-based time step selection.
+// CFL-based time step selection.
 
 #include <vector>
 

@@ -137,7 +137,7 @@ int run_cli(int argc, char** argv) {
                         grid.dx(),
                         cfg.flux_name,
                         cfg.reconstruction_name,
-                        muscl && !cfg.limiter_name.empty() ? cfg.limiter_name : "none",
+                        muscl ? cfg.limiter_name : "none",
                         cfg.solver.cfl,
                         cfg.solver.t_final,
                         stats.t_final_reached,

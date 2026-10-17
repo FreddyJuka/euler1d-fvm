@@ -20,6 +20,8 @@ Testing/
 # Python
 __pycache__/
 *.py[cod]
+.venv/
+.pytest_cache/
 
 # Data and figures
 *.csv
@@ -27,7 +29,6 @@ __pycache__/
 
 # Editors
 .vscode/
-.venv/
 
 # Versioned documentation figures
 !docs/figures/*.png
