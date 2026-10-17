@@ -11,7 +11,7 @@ A from-scratch C++17 finite volume solver for the 1D compressible Euler equation
 ## Features
 
 - HLLC and Rusanov (local Lax-Friedrichs) numerical fluxes
-- First-order and MUSCL reconstruction in primitive variables, with minmod, van Leer [5] and unlimited (central) slopes; MUSCL [6]
+- First-order and MUSCL reconstruction in primitive variables, with minmod, van Leer [6] and unlimited (central) slopes; MUSCL [7]
 - SSP-RK3 time integration with a CFL-based time step
 - Periodic and transmissive boundaries via ghost cells
 - Config-file driven command-line interface with CSV output
@@ -46,14 +46,14 @@ $$
 
 where $\hat F_{j+1/2} = \hat F(W^L_{j+1/2}, W^R_{j+1/2})$ is a numerical flux evaluated from the reconstructed primitive states $W = (\rho, u, p)$ on both sides of the face.
 
-**Rusanov flux** [8].
+**Rusanov flux** [9].
 
 $$
 \hat F = \tfrac12\left(F(W_L) + F(W_R)\right) - \tfrac12 s_{\max}\,\left(U_R - U_L\right), \qquad
 s_{\max} = \max\left(|u_L| + a_L,\; |u_R| + a_R\right).
 $$
 
-**HLLC flux** [3] (Toro [1], Ch. 10). Wave speed estimates use Roe averages with $H = (E + p)/\rho$, $\sqrt{\rho}$ weights, and Einfeldt-type bounds [4]:
+**HLLC flux** [4] (Toro [1], Ch. 10). Wave speed estimates use Roe averages with $H = (E + p)/\rho$, $\sqrt{\rho}$ weights, and Einfeldt-type bounds [5]:
 
 $$
 \tilde u = \frac{\sqrt{\rho_L}\,u_L + \sqrt{\rho_R}\,u_R}{\sqrt{\rho_L} + \sqrt{\rho_R}}, \quad
@@ -78,17 +78,17 @@ $$
 
 and the flux is $F(W_L)$ if $S_L \ge 0$; $F(W_L) + S_L (U_{*L} - U_L)$ if $S_L < 0 \le S_*$; $F(W_R) + S_R (U_{*R} - U_R)$ if $S_* < 0 < S_R$; and $F(W_R)$ if $S_R \le 0$.
 
-**MUSCL reconstruction** [6]. Each primitive component $q$ in cell $j$ gets a limited slope $\sigma_j = \phi(\Delta_-, \Delta_+)$ from the one-sided differences $\Delta_- = q_j - q_{j-1}$ and $\Delta_+ = q_{j+1} - q_j$. The face values are $q^L_{j+1/2} = q_j + \tfrac12 \sigma_j$ (left state of face $j+1/2$, `WL[f]` in the code) and $q^R_{j-1/2} = q_j - \tfrac12 \sigma_j$ (right state of face $j-1/2$, `WR[f]`). Three slope options are available:
+**MUSCL reconstruction** [7]. Each primitive component $q$ in cell $j$ gets a limited slope $\sigma_j = \phi(\Delta_-, \Delta_+)$ from the one-sided differences $\Delta_- = q_j - q_{j-1}$ and $\Delta_+ = q_{j+1} - q_j$. The face values are $q^L_{j+1/2} = q_j + \tfrac12 \sigma_j$ (left state of face $j+1/2$, `WL[f]` in the code) and $q^R_{j-1/2} = q_j - \tfrac12 \sigma_j$ (right state of face $j-1/2$, `WR[f]`). Three slope options are available:
 
 | Slope | $\phi(a, b)$ |
 |---|---|
 | minmod | $0$ if $ab \le 0$, else $\operatorname{sign}(a)\min(\lvert a\rvert, \lvert b\rvert)$ |
-| van Leer [5] | $0$ if $ab \le 0$, else $2ab/(a + b)$ |
+| van Leer [6] | $0$ if $ab \le 0$, else $2ab/(a + b)$ |
 | unlimited (central) | $\tfrac12 (a + b)$ |
 
 The unlimited slope is not TVD and is intended only for smooth problems and for verifying the formal order of accuracy.
 
-**Time integration.** The strong-stability-preserving third-order Runge-Kutta scheme of Shu and Osher [7], with $L(U)$ the spatial operator above:
+**Time integration.** The strong-stability-preserving third-order Runge-Kutta scheme of Shu and Osher [8], with $L(U)$ the spatial operator above:
 
 $$
 \begin{aligned}
@@ -150,7 +150,7 @@ Observations:
 
 ### Shock tubes
 
-Both problems use $N = 200$ cells, transmissive boundaries, $\mathrm{CFL} = 0.8$, and are compared against the exact Riemann solution (`python/exact_riemann.py`, Toro Ch. 4). The Sod problem uses the data of Toro [1], Table 4.1, Test 1, run to $t = 0.2$ (figure at the top of this page); Lax's problem [2] is run to $t = 0.14$. All numbers below are taken from `sod_metrics.csv` and `lax_metrics.csv`, which `scripts/run_shock_tubes.sh` writes to `results/shock_tubes/`.
+Both problems use $N = 200$ cells, transmissive boundaries, $\mathrm{CFL} = 0.8$, and are compared against the exact Riemann solution (`python/exact_riemann.py`, Toro Ch. 4). The Sod problem is the Sod shock tube (Sod 1978) [2], with the data as in Toro (2009) [1], Table 4.1, Test 1, run to $t = 0.2$ (figure at the top of this page); Lax's problem [3] is run to $t = 0.14$. All numbers below are taken from `sod_metrics.csv` and `lax_metrics.csv`, which `scripts/run_shock_tubes.sh` writes to `results/shock_tubes/`.
 
 ![Lax shock tube comparison](docs/figures/lax_comparison.png)
 
@@ -211,7 +211,7 @@ Each run writes `solution_initial.csv`, `solution_final.csv`, `residuals.csv` an
 Config files use `key = value` lines with `#` comments. `cases/sod.cfg`:
 
 ```ini
-# Sod shock tube. Sod data as in Toro (2009) Table 4.1 Test 1, run to t = 0.2.
+# Sod shock tube (Sod 1978), with the data as in Toro (2009) Table 4.1 Test 1, run to t = 0.2.
 problem = riemann
 n_cells = 200
 x_min = 0.0
@@ -299,13 +299,14 @@ The GitHub Actions workflow has three jobs:
 ## References
 
 1. E. F. Toro, *Riemann Solvers and Numerical Methods for Fluid Dynamics*, 3rd ed., Springer, 2009.
-2. P. D. Lax, Comm. Pure Appl. Math. 7 (1954) 159-193.
-3. E. F. Toro, M. Spruce, W. Speares, Shock Waves 4 (1994) 25-34.
-4. B. Einfeldt, SIAM J. Numer. Anal. 25 (1988) 294-318.
-5. B. van Leer, J. Comput. Phys. 14 (1974) 361-370.
-6. B. van Leer, J. Comput. Phys. 32 (1979) 101-136.
-7. C.-W. Shu, S. Osher, J. Comput. Phys. 77 (1988) 439-471.
-8. V. V. Rusanov, USSR Comput. Math. Math. Phys. 1 (1962) 304-320.
+2. G. A. Sod, J. Comput. Phys. 27 (1978) 1-31.
+3. P. D. Lax, Comm. Pure Appl. Math. 7 (1954) 159-193.
+4. E. F. Toro, M. Spruce, W. Speares, Shock Waves 4 (1994) 25-34.
+5. B. Einfeldt, SIAM J. Numer. Anal. 25 (1988) 294-318.
+6. B. van Leer, J. Comput. Phys. 14 (1974) 361-370.
+7. B. van Leer, J. Comput. Phys. 32 (1979) 101-136.
+8. C.-W. Shu, S. Osher, J. Comput. Phys. 77 (1988) 439-471.
+9. V. V. Rusanov, USSR Comput. Math. Math. Phys. 1 (1962) 304-320.
 
 ## License
 
