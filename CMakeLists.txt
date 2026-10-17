@@ -64,4 +64,8 @@ if(EULER1D_BUILD_TESTS)
     add_executable(test_mesh_boundary tests/test_mesh_boundary.cpp)
     target_link_libraries(test_mesh_boundary PRIVATE euler1d_core GTest::gtest_main)
     gtest_discover_tests(test_mesh_boundary)
+
+    add_executable(test_reconstruction tests/test_reconstruction.cpp)
+    target_link_libraries(test_reconstruction PRIVATE euler1d_core GTest::gtest_main)
+    gtest_discover_tests(test_reconstruction)
 endif()
