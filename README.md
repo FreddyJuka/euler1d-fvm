@@ -11,7 +11,7 @@ A from-scratch C++17 finite volume solver for the 1D compressible Euler equation
 ## Features
 
 - HLLC and Rusanov (local Lax-Friedrichs) numerical fluxes
-- First-order and MUSCL reconstruction in primitive variables, with minmod, van Leer [6] and unlimited (central) slopes
+- First-order and MUSCL reconstruction in primitive variables, with minmod, van Leer [5] and unlimited (central) slopes; MUSCL [6]
 - SSP-RK3 time integration with a CFL-based time step
 - Periodic and transmissive boundaries via ghost cells
 - Config-file driven command-line interface with CSV output
@@ -53,7 +53,7 @@ $$
 s_{\max} = \max\left(|u_L| + a_L,\; |u_R| + a_R\right).
 $$
 
-**HLLC flux** [4] (Toro [1], Ch. 10). Wave speed estimates use Roe averages with $H = (E + p)/\rho$, $\sqrt{\rho}$ weights, and Einfeldt-type bounds [5]:
+**HLLC flux** [3] (Toro [1], Ch. 10). Wave speed estimates use Roe averages with $H = (E + p)/\rho$, $\sqrt{\rho}$ weights, and Einfeldt-type bounds [4]:
 
 $$
 \tilde u = \frac{\sqrt{\rho_L}\,u_L + \sqrt{\rho_R}\,u_R}{\sqrt{\rho_L} + \sqrt{\rho_R}}, \quad
@@ -78,12 +78,12 @@ $$
 
 and the flux is $F(W_L)$ if $S_L \ge 0$; $F(W_L) + S_L (U_{*L} - U_L)$ if $S_L < 0 \le S_*$; $F(W_R) + S_R (U_{*R} - U_R)$ if $S_* < 0 < S_R$; and $F(W_R)$ if $S_R \le 0$.
 
-**MUSCL reconstruction.** Each primitive component $q$ in cell $j$ gets a limited slope $\sigma_j = \phi(\Delta_-, \Delta_+)$ from the one-sided differences $\Delta_- = q_j - q_{j-1}$ and $\Delta_+ = q_{j+1} - q_j$. The face values are $q^R_{j} = q_j + \tfrac12 \sigma_j$ (left state of face $j+1/2$) and $q^L_{j} = q_j - \tfrac12 \sigma_j$ (right state of face $j-1/2$). Three slope options are available:
+**MUSCL reconstruction** [6]. Each primitive component $q$ in cell $j$ gets a limited slope $\sigma_j = \phi(\Delta_-, \Delta_+)$ from the one-sided differences $\Delta_- = q_j - q_{j-1}$ and $\Delta_+ = q_{j+1} - q_j$. The face values are $q^L_{j+1/2} = q_j + \tfrac12 \sigma_j$ (left state of face $j+1/2$, `WL[f]` in the code) and $q^R_{j-1/2} = q_j - \tfrac12 \sigma_j$ (right state of face $j-1/2$, `WR[f]`). Three slope options are available:
 
 | Slope | $\phi(a, b)$ |
 |---|---|
 | minmod | $0$ if $ab \le 0$, else $\operatorname{sign}(a)\min(\lvert a\rvert, \lvert b\rvert)$ |
-| van Leer [6] | $0$ if $ab \le 0$, else $2ab/(a + b)$ |
+| van Leer [5] | $0$ if $ab \le 0$, else $2ab/(a + b)$ |
 | unlimited (central) | $\tfrac12 (a + b)$ |
 
 The unlimited slope is not TVD and is intended only for smooth problems and for verifying the formal order of accuracy.
@@ -144,15 +144,13 @@ Observed orders $p$ are computed between consecutive grids as $p = \log(e_\text{
 
 Observations:
 
-1. The unlimited MUSCL scheme reaches $p = 2.00$ in the L1, L2 and Linf norms, confirming formal second-order accuracy of the whole pipeline (reconstruction, HLLC flux, SSP-RK3, periodic ghost cells).
+1. The unlimited MUSCL scheme reaches $p = 2.00$ in the L1, L2 and Linf norms. This confirms second-order accuracy of the reconstruction and of the contact-wave path of the flux, with SSP-RK3 and periodic boundaries. Because $u$ and $p$ are uniform, the test does not exercise the acoustic or nonlinear wave paths of the flux; those are covered by the shock-tube comparisons and the HLLC reference-value tests. The observed order reflects the spatial error, so it does not demonstrate the third-order accuracy of SSP-RK3.
 2. For a single sinusoidal error mode $A\sin(\cdot)$ the norms satisfy $L_2/L_1 = \pi/(2\sqrt2) \approx 1.1107$ and $L_\infty/L_1 = \pi/2 \approx 1.5708$. For the unlimited scheme on the finest grid ($N = 800$) the computed ratios are $L_2/L_1 = 1.1107$ and $L_\infty/L_1 = 1.5708$, and they stay within 0.1% of these values on all six grids. The error is therefore a single smooth mode, with no localized defects at the periodic boundary or in the ghost cells.
 3. TVD limiters clip smooth extrema, so the error concentrates near the crest and trough of the wave. This gives the observed hierarchy $p_{L_1} > p_{L_2} > p_{L_\infty}$ (for van Leer at $N = 800$: 2.04, 1.76, 1.42), and the ratios above are no longer constant: for van Leer, $L_\infty/L_1$ grows from 2.1 at $N = 25$ to 13.8 at $N = 800$.
 
 ### Shock tubes
 
-Both problems use $N = 200$ cells, transmissive boundaries, $\mathrm{CFL} = 0.8$, and are compared against the exact Riemann solution (`python/exact_riemann.py`, Toro Ch. 4). Sod's problem [2] is run to $t = 0.2$ and Lax's problem [3] to $t = 0.14$.
-
-![Sod shock tube comparison](docs/figures/sod_comparison.png)
+Both problems use $N = 200$ cells, transmissive boundaries, $\mathrm{CFL} = 0.8$, and are compared against the exact Riemann solution (`python/exact_riemann.py`, Toro Ch. 4). The Sod problem uses the data of Toro [1], Table 4.1, Test 1, run to $t = 0.2$ (figure at the top of this page); Lax's problem [2] is run to $t = 0.14$. All numbers below are taken from `sod_metrics.csv` and `lax_metrics.csv`, which `scripts/run_shock_tubes.sh` writes to `results/shock_tubes/`.
 
 ![Lax shock tube comparison](docs/figures/lax_comparison.png)
 
@@ -165,11 +163,22 @@ L1 error of the density against the exact solution at the cell centers ($N = 200
 | HLLC, MUSCL minmod | 4.274980e-03 | 1.649593e-02 |
 | HLLC, MUSCL van Leer | 2.995211e-03 | 1.225252e-02 |
 
-HLLC resolves the contact discontinuity more sharply than Rusanov (compare the two MUSCL-minmod rows), and van Leer is the least dissipative of the limiters tested. In the Sod problem, the specific internal energy $e$ shows a small overshoot just to the right of the contact with the van Leer limiter (peak $e \approx 2.88$ against an exact plateau of $\approx 2.85$). This is expected: the TVD bound applies to the reconstructed primitive variables $(\rho, u, p)$, not to derived quantities such as $e = p/((\gamma-1)\rho)$.
+In the figures, HLLC with MUSCL minmod spreads the density contact over visibly fewer cells than Rusanov with the same limiter. Separately, the whole-domain L1 density error in Sod is 4.274980e-03 for HLLC against 5.456449e-03 for Rusanov (a difference of 1.181469e-03, about 22% lower), and in Lax 1.649593e-02 against 2.065369e-02 (a difference of 4.15776e-03, about 20% lower). These L1 differences cover the whole domain (shock, contact and rarefaction) and are not attributed to the contact alone. Among the MUSCL variants, van Leer has the lowest L1 error.
+
+In the Sod problem, all four schemes slightly exceed the exact maximum of the specific internal energy $e$, $e_\text{max,exact} = 2.853541$, next to the contact. The overshoot $e_\text{max,numerical}/e_\text{max,exact} - 1$ is largest with van Leer and much smaller for the others:
+
+| Scheme | $e_\text{max}$ (numerical) | Overshoot |
+|---|---:|---:|
+| HLLC, first order | 2.856892 | 0.117% |
+| Rusanov, MUSCL minmod | 2.860467 | 0.243% |
+| HLLC, MUSCL minmod | 2.859243 | 0.200% |
+| HLLC, MUSCL van Leer | 2.882375 | 1.010% |
+
+This is expected: the TVD bound applies to the reconstructed primitive variables $(\rho, u, p)$, not to derived quantities such as $e = p/((\gamma-1)\rho)$. The Lax $e_\text{max}$ column is not used here, since it is the global maximum, located at the left boundary state.
 
 ## Build and run
 
-Prerequisites: CMake >= 3.16, a C++17 compiler (GCC or Clang), and Python >= 3.10 for the post-processing scripts. GoogleTest is fetched automatically by CMake.
+Prerequisites: CMake >= 3.24, a C++17 compiler (GCC or Clang), and Python >= 3.10 for the post-processing scripts. GoogleTest is fetched automatically by CMake.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -195,13 +204,14 @@ Usage: euler1d <config.cfg> [--n-cells N] [--output-dir DIR] [--flux NAME]
   --help                 show this message
 ```
 
+Exit codes: `0` success, `1` error (bad arguments, configuration or solver failure), `2` the run was truncated because `max_steps` was reached before `t_final`. In the truncated case a warning is printed to stderr, all output files are still written, and `summary.csv` records the time reached in `t_reached`.
+
 Each run writes `solution_initial.csv`, `solution_final.csv`, `residuals.csv` and `summary.csv` into `output_dir`.
 
 Config files use `key = value` lines with `#` comments. `cases/sod.cfg`:
 
 ```ini
-# Sod shock tube. Reference: G. A. Sod, J. Comput. Phys. 27 (1978) 1-31;
-# Toro, Riemann Solvers and Numerical Methods for Fluid Dynamics, Test 1.
+# Sod shock tube. Sod data as in Toro (2009) Table 4.1 Test 1, run to t = 0.2.
 problem = riemann
 n_cells = 200
 x_min = 0.0
@@ -237,7 +247,7 @@ pip install -r requirements.txt
 scripts/run_convergence.sh     # grid-convergence study -> results/convergence/
 scripts/run_shock_tubes.sh     # Sod and Lax comparisons -> results/shock_tubes/
 scripts/make_figures.sh        # both of the above, then copies the figures to docs/figures/
-python -m pytest tests/python  # exact Riemann solver tests
+python -m pytest tests/python  # exact Riemann solver and reference-value tests
 ```
 
 ## Project structure
@@ -264,14 +274,21 @@ docs/figures/      figures used in this README
 
 ## Testing and CI
 
-The unit tests cover the equation of state, fluxes, mesh and boundaries, reconstruction, time step and solver, configuration parsing, initial conditions and the command-line interface. The GitHub Actions workflow has three jobs:
+The unit tests cover the equation of state, fluxes, mesh and boundaries, reconstruction, time step and solver, configuration parsing, initial conditions and the command-line interface (including the exit code 2 for truncated runs). Further checks:
+
+- The HLLC flux is compared to 1e-13 relative against 50-digit values from an independent mpmath implementation (`tests/python/reference_hllc.py`, which imports no project code).
+- The exact Riemann solver is tested against Toro's Table 4.3 (star states and star densities), the Rankine-Hugoniot conditions across the Sod shock, and continuity and self-similarity of the rarefaction fan.
+
+The GitHub Actions workflow has three jobs:
 
 - **build-test**: builds with GCC and Clang in Release mode with warnings as errors and runs `ctest`.
-- **sanitizers**: builds in Debug mode with AddressSanitizer and UBSan and runs `ctest`.
-- **verification**: runs the Python tests and the grid-convergence study on $N = 50, 100, 200, 400$, then fails if the observed order on the finest grid leaves the expected range (unlimited MUSCL, L1 and Linf: 1.9-2.1; first-order HLLC, L1: 0.85-1.1). The convergence report is uploaded as a workflow artifact.
+- **sanitizers**: builds in Debug mode with AddressSanitizer and UBSan, with `-fno-sanitize-recover=all` and `halt_on_error=1`, so any report fails the job, and runs `ctest`.
+- **verification**: runs the Python tests and the grid-convergence study on $N = 50, 100, 200, 400$, then fails if the observed order on the finest grid leaves the expected range (unlimited MUSCL, L1 and Linf: 1.9-2.1; first-order HLLC, L1: 0.85-1.1). It also runs the Sod and Lax shock tubes and fails if the L1 density error of HLLC with MUSCL minmod exceeds 1.1 times its current value (Sod 4.702e-3, Lax 1.814e-2). The convergence report and the shock-tube metrics and figures are uploaded as workflow artifacts.
 
 ## Roadmap
 
+- Smooth acoustic-wave convergence test
+- Temporal refinement study at fixed $\Delta x$ (to demonstrate the order of SSP-RK3)
 - Roe flux with an entropy fix
 - WENO5 reconstruction
 - Characteristic-variable reconstruction
@@ -282,10 +299,10 @@ The unit tests cover the equation of state, fluxes, mesh and boundaries, reconst
 ## References
 
 1. E. F. Toro, *Riemann Solvers and Numerical Methods for Fluid Dynamics*, 3rd ed., Springer, 2009.
-2. G. A. Sod, J. Comput. Phys. 27 (1978) 1-31.
-3. P. D. Lax, Comm. Pure Appl. Math. 7 (1954) 159-193.
-4. E. F. Toro, M. Spruce, W. Speares, Shock Waves 4 (1994) 25-34.
-5. B. Einfeldt, SIAM J. Numer. Anal. 25 (1988) 294-318.
+2. P. D. Lax, Comm. Pure Appl. Math. 7 (1954) 159-193.
+3. E. F. Toro, M. Spruce, W. Speares, Shock Waves 4 (1994) 25-34.
+4. B. Einfeldt, SIAM J. Numer. Anal. 25 (1988) 294-318.
+5. B. van Leer, J. Comput. Phys. 14 (1974) 361-370.
 6. B. van Leer, J. Comput. Phys. 32 (1979) 101-136.
 7. C.-W. Shu, S. Osher, J. Comput. Phys. 77 (1988) 439-471.
 8. V. V. Rusanov, USSR Comput. Math. Math. Phys. 1 (1962) 304-320.
