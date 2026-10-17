@@ -31,11 +31,31 @@ target_include_directories(euler1d_core PUBLIC
 add_executable(euler1d src/main.cpp)
 target_link_libraries(euler1d PRIVATE euler1d_core)
 
+option(EULER1D_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+option(EULER1D_SANITIZE "Build with AddressSanitizer and UBSan (GCC/Clang only)" OFF)
+
+# Applies the project-wide error and sanitizer options to a target.
+function(euler1d_configure_target target)
+    if(EULER1D_WARNINGS_AS_ERRORS)
+        if(MSVC)
+            target_compile_options(${target} PRIVATE /WX)
+        else()
+            target_compile_options(${target} PRIVATE -Werror)
+        endif()
+    endif()
+    if(EULER1D_SANITIZE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${target} PRIVATE
+            -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+    endif()
+endfunction()
+
 foreach(target euler1d_core euler1d)
     target_compile_options(${target} PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
         $<$<CXX_COMPILER_ID:MSVC>:/W4>
     )
+    euler1d_configure_target(${target})
 endforeach()
 
 option(EULER1D_BUILD_TESTS "Build unit tests" ON)
@@ -56,30 +76,37 @@ if(EULER1D_BUILD_TESTS)
 
     add_executable(test_eos tests/test_eos.cpp)
     target_link_libraries(test_eos PRIVATE euler1d_core GTest::gtest_main)
+    euler1d_configure_target(test_eos)
     gtest_discover_tests(test_eos)
 
     add_executable(test_flux tests/test_flux.cpp)
     target_link_libraries(test_flux PRIVATE euler1d_core GTest::gtest_main)
+    euler1d_configure_target(test_flux)
     gtest_discover_tests(test_flux)
 
     add_executable(test_mesh_boundary tests/test_mesh_boundary.cpp)
     target_link_libraries(test_mesh_boundary PRIVATE euler1d_core GTest::gtest_main)
+    euler1d_configure_target(test_mesh_boundary)
     gtest_discover_tests(test_mesh_boundary)
 
     add_executable(test_reconstruction tests/test_reconstruction.cpp)
     target_link_libraries(test_reconstruction PRIVATE euler1d_core GTest::gtest_main)
+    euler1d_configure_target(test_reconstruction)
     gtest_discover_tests(test_reconstruction)
 
     add_executable(test_solver tests/test_solver.cpp)
     target_link_libraries(test_solver PRIVATE euler1d_core GTest::gtest_main)
+    euler1d_configure_target(test_solver)
     gtest_discover_tests(test_solver)
 
     add_executable(test_problems tests/test_problems.cpp)
     target_link_libraries(test_problems PRIVATE euler1d_core GTest::gtest_main)
+    euler1d_configure_target(test_problems)
     gtest_discover_tests(test_problems)
 
     add_executable(test_io tests/test_io.cpp)
     target_link_libraries(test_io PRIVATE euler1d_core GTest::gtest_main)
+    euler1d_configure_target(test_io)
     gtest_discover_tests(test_io)
 
     # End-to-end CLI runs on the shipped case files.

@@ -64,7 +64,8 @@ def main() -> None:
                     markersize=4, markevery=every, markerfacecolor="none", label=label)
         rho_ex = exact_on(cfg, x)[0]
         dx = (x_max - x_min) / len(x)
-        print(f"{label}: L1(rho) = {np.sum(np.abs(data['rho'] - rho_ex)) * dx:.6e}")
+        l1 = np.sum(np.abs(data["rho"] - rho_ex)) * dx
+        print(f"{args.config.stem} | {label} | L1_rho = {l1:.6e}")
 
     axes[0].legend()
     if args.title:

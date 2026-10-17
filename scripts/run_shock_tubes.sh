@@ -36,5 +36,5 @@ for case_name in sod lax; do
     done
     "${PYTHON:-python3}" python/plot_riemann.py --config "cases/$case_name.cfg" \
         "${run_args[@]}" --out "$OUTPUT_ROOT/${case_name}_comparison.png" \
-        --title "$case_name shock tube, N = 200"
+        --title "${case_name^} shock tube, N = 200"
 done
