@@ -39,6 +39,7 @@ VARIANTS=(
     "rusanov_first_order:rusanov:first_order:-"
     "hllc_muscl_minmod:hllc:muscl:minmod"
     "hllc_muscl_vanleer:hllc:muscl:vanleer"
+    "hllc_muscl_unlimited:hllc:muscl:unlimited"
     "rusanov_muscl_vanleer:rusanov:muscl:vanleer"
 )
 

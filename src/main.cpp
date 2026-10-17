@@ -22,7 +22,7 @@ void print_usage(std::ostream& os) {
           "  --output-dir DIR       override output_dir from the config file\n"
           "  --flux NAME            override flux (rusanov, hllc)\n"
           "  --reconstruction NAME  override reconstruction (first_order, muscl)\n"
-          "  --limiter NAME         override limiter (minmod, vanleer, van_leer)\n"
+          "  --limiter NAME         override limiter (minmod, vanleer, van_leer, unlimited)\n"
           "  --quiet                suppress the final summary line\n"
           "  --help                 show this message\n";
 }
@@ -97,6 +97,14 @@ int run_cli(int argc, char** argv) {
     }
     if (cfg.solver.recon.scheme == ReconstructionScheme::MUSCL && cfg.limiter_name.empty()) {
         throw std::runtime_error("reconstruction muscl requires a limiter");
+    }
+
+    if (cfg.solver.recon.scheme == ReconstructionScheme::MUSCL &&
+        cfg.solver.recon.limiter == Limiter::Unlimited &&
+        cfg.problem.type == ProblemType::Riemann) {
+        std::cerr << "euler1d: warning: unlimited MUSCL is not TVD; expect oscillations at "
+                     "discontinuities"
+                  << std::endl;
     }
 
     const Grid grid(cfg.n_cells, cfg.x_min, cfg.x_max);

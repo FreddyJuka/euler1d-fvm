@@ -14,6 +14,7 @@ using namespace euler1d;
 namespace {
 
 const Limiter kLimiters[] = {Limiter::Minmod, Limiter::VanLeer};
+const Limiter kLinearLimiters[] = {Limiter::Minmod, Limiter::VanLeer, Limiter::Unlimited};
 
 void expect_prim_eq(const Primitive& a, const Primitive& b) {
     EXPECT_EQ(a.rho, b.rho);
@@ -43,6 +44,9 @@ TEST(Limiters, Values) {
     EXPECT_DOUBLE_EQ(van_leer(1.0, 3.0), 1.5);
     EXPECT_DOUBLE_EQ(van_leer(1.0, -1.0), 0.0);
     EXPECT_DOUBLE_EQ(van_leer(0.0, 2.0), 0.0);
+    EXPECT_DOUBLE_EQ(unlimited_slope(1.0, 3.0), 2.0);
+    EXPECT_DOUBLE_EQ(unlimited_slope(1.0, -1.0), 0.0);
+    EXPECT_DOUBLE_EQ(unlimited_slope(-2.0, -4.0), -3.0);
 }
 
 TEST(Reconstruction, FirstOrder) {
@@ -63,7 +67,7 @@ TEST(Reconstruction, LinearExactness) {
     const Grid grid(8, 0.0, 1.0);
     std::vector<Primitive> W(grid.size());
     for (int i = 0; i < grid.size(); ++i) W[i] = {1.0 + 0.1 * i, 0.5 + 0.01 * i, 2.0 + 0.2 * i};
-    for (Limiter lim : kLimiters) {
+    for (Limiter lim : kLinearLimiters) {
         std::vector<Primitive> WL, WR;
         reconstruct(W, grid, {ReconstructionScheme::MUSCL, lim}, WL, WR);
         for (int f = 0; f <= grid.n_cells(); ++f) {
@@ -89,6 +93,28 @@ TEST(Reconstruction, StepPreservation) {
         expect_prim_eq(WL[f], W[5]);
         expect_prim_eq(WR[f], W[6]);
     }
+}
+
+TEST(Reconstruction, UnlimitedIsNotBounded) {
+    const Grid grid(8, 0.0, 1.0);
+    std::vector<Primitive> W(grid.size());
+    for (int i = 0; i < grid.size(); ++i) {
+        W[i] = (i < 6) ? Primitive{1.0, 0.0, 1.0} : Primitive{0.125, 0.0, 0.1};
+    }
+    std::vector<Primitive> WL, WR;
+    reconstruct(W, grid, {ReconstructionScheme::MUSCL, Limiter::Unlimited}, WL, WR);
+    bool outside = false;
+    for (int f = 0; f <= grid.n_cells(); ++f) {
+        const Primitive& a = W[grid.begin() + f - 1];
+        const Primitive& b = W[grid.begin() + f];
+        for (const Primitive* v : {&WL[f], &WR[f]}) {
+            if (v->rho < std::min(a.rho, b.rho) - 1e-14 ||
+                v->rho > std::max(a.rho, b.rho) + 1e-14) {
+                outside = true;
+            }
+        }
+    }
+    EXPECT_TRUE(outside);
 }
 
 TEST(Reconstruction, Boundedness) {
@@ -130,6 +156,7 @@ TEST(Reconstruction, Parsers) {
     EXPECT_EQ(parse_limiter("MinMod"), Limiter::Minmod);
     EXPECT_EQ(parse_limiter("VanLeer"), Limiter::VanLeer);
     EXPECT_EQ(parse_limiter("van_leer"), Limiter::VanLeer);
+    EXPECT_EQ(parse_limiter("Unlimited"), Limiter::Unlimited);
     EXPECT_THROW(parse_reconstruction("weno"), std::invalid_argument);
     EXPECT_THROW(parse_limiter("superbee"), std::invalid_argument);
 }

@@ -11,7 +11,9 @@
 namespace euler1d {
 
 enum class ReconstructionScheme { FirstOrder, MUSCL };
-enum class Limiter { Minmod, VanLeer };
+// Unlimited is the central (Fromm) slope: it is not TVD and is intended only for smooth
+// problems and verification of the formal order of accuracy.
+enum class Limiter { Minmod, VanLeer, Unlimited };
 
 struct ReconstructionConfig {
     ReconstructionScheme scheme;
@@ -23,6 +25,9 @@ double minmod(double a, double b);
 
 // 0 if a*b <= 0, else 2*a*b/(a+b).
 double van_leer(double a, double b);
+
+// Central slope 0.5*(a + b); no limiting.
+double unlimited_slope(double a, double b);
 
 // Case-insensitive; throw std::invalid_argument for unknown names.
 ReconstructionScheme parse_reconstruction(const std::string& name);

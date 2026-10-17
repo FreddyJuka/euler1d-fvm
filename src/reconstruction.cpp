@@ -17,6 +17,8 @@ double van_leer(double a, double b) {
     return 2.0 * a * b / (a + b);
 }
 
+double unlimited_slope(double a, double b) { return 0.5 * (a + b); }
+
 namespace {
 
 std::string to_lower(const std::string& s) {
@@ -64,8 +66,9 @@ Limiter parse_limiter(const std::string& name) {
     const std::string lower = to_lower(name);
     if (lower == "minmod") return Limiter::Minmod;
     if (lower == "vanleer" || lower == "van_leer") return Limiter::VanLeer;
+    if (lower == "unlimited") return Limiter::Unlimited;
     throw std::invalid_argument("Unknown limiter '" + name +
-                                "'. Valid names: minmod, vanleer, van_leer");
+                                "'. Valid names: minmod, vanleer, van_leer, unlimited");
 }
 
 void reconstruct(const std::vector<Primitive>& W, const Grid& grid,
@@ -97,6 +100,9 @@ void reconstruct(const std::vector<Primitive>& W, const Grid& grid,
             break;
         case Limiter::VanLeer:
             muscl(W, grid, WL, WR, &van_leer);
+            break;
+        case Limiter::Unlimited:
+            muscl(W, grid, WL, WR, &unlimited_slope);
             break;
     }
 }
