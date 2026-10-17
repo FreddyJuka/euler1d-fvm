@@ -89,6 +89,11 @@ if(EULER1D_BUILD_TESTS)
                          --n-cells 50 --quiet
                          --output-dir ${CMAKE_CURRENT_BINARY_DIR}/cli_out/${case})
     endforeach()
+    add_test(NAME cli_scheme_overrides
+             COMMAND euler1d ${CMAKE_CURRENT_SOURCE_DIR}/cases/density_wave.cfg
+                     --n-cells 50 --quiet --flux rusanov --reconstruction MUSCL
+                     --limiter van_leer
+                     --output-dir ${CMAKE_CURRENT_BINARY_DIR}/cli_out/overrides)
     add_test(NAME cli_missing_config
              COMMAND euler1d ${CMAKE_CURRENT_BINARY_DIR}/does_not_exist.cfg --quiet)
     set_tests_properties(cli_missing_config PROPERTIES WILL_FAIL TRUE)

@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
@@ -14,11 +16,15 @@ using namespace euler1d;
 namespace {
 
 void print_usage(std::ostream& os) {
-    os << "Usage: euler1d <config.cfg> [--n-cells N] [--output-dir DIR] [--quiet] [--help]\n"
-          "  --n-cells N       override n_cells from the config file\n"
-          "  --output-dir DIR  override output_dir from the config file\n"
-          "  --quiet           suppress the final summary line\n"
-          "  --help            show this message\n";
+    os << "Usage: euler1d <config.cfg> [--n-cells N] [--output-dir DIR] [--flux NAME]\n"
+          "                [--reconstruction NAME] [--limiter NAME] [--quiet] [--help]\n"
+          "  --n-cells N            override n_cells from the config file\n"
+          "  --output-dir DIR       override output_dir from the config file\n"
+          "  --flux NAME            override flux (rusanov, hllc)\n"
+          "  --reconstruction NAME  override reconstruction (first_order, muscl)\n"
+          "  --limiter NAME         override limiter (minmod, vanleer, van_leer)\n"
+          "  --quiet                suppress the final summary line\n"
+          "  --help                 show this message\n";
 }
 
 int parse_int_arg(const std::string& text) {
@@ -35,10 +41,17 @@ int parse_int_arg(const std::string& text) {
     return v;
 }
 
+std::string to_lower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+}
+
 int run_cli(int argc, char** argv) {
     std::string config_path;
     std::optional<int> n_cells;
     std::optional<std::string> output_dir;
+    std::optional<std::string> flux, reconstruction, limiter;
     bool quiet = false;
 
     for (int i = 1; i < argc; ++i) {
@@ -48,11 +61,15 @@ int run_cli(int argc, char** argv) {
             return 0;
         } else if (arg == "--quiet") {
             quiet = true;
-        } else if (arg == "--n-cells" || arg == "--output-dir") {
+        } else if (arg == "--n-cells" || arg == "--output-dir" || arg == "--flux" ||
+                   arg == "--reconstruction" || arg == "--limiter") {
             if (i + 1 >= argc) throw std::runtime_error("option " + arg + " requires a value");
             const std::string value = argv[++i];
             if (arg == "--n-cells") n_cells = parse_int_arg(value);
-            else output_dir = value;
+            else if (arg == "--output-dir") output_dir = value;
+            else if (arg == "--flux") flux = value;
+            else if (arg == "--reconstruction") reconstruction = value;
+            else limiter = value;
         } else if (!arg.empty() && arg[0] == '-') {
             throw std::runtime_error("unknown option '" + arg + "'");
         } else if (config_path.empty()) {
@@ -66,6 +83,21 @@ int run_cli(int argc, char** argv) {
     Config cfg = load_config(config_path);
     if (n_cells) cfg.n_cells = *n_cells;
     if (output_dir) cfg.output_dir = *output_dir;
+    if (flux) {
+        cfg.solver.flux = parse_flux_scheme(*flux);
+        cfg.flux_name = to_lower(*flux);
+    }
+    if (reconstruction) {
+        cfg.solver.recon.scheme = parse_reconstruction(*reconstruction);
+        cfg.reconstruction_name = to_lower(*reconstruction);
+    }
+    if (limiter) {
+        cfg.solver.recon.limiter = parse_limiter(*limiter);
+        cfg.limiter_name = to_lower(*limiter);
+    }
+    if (cfg.solver.recon.scheme == ReconstructionScheme::MUSCL && cfg.limiter_name.empty()) {
+        throw std::runtime_error("reconstruction muscl requires a limiter");
+    }
 
     const Grid grid(cfg.n_cells, cfg.x_min, cfg.x_max);
     const IdealGas gas(cfg.gamma);
