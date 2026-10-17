@@ -22,101 +22,101 @@ A from-scratch C++17 finite volume solver for the 1D compressible Euler equation
 
 The 1D Euler equations in conservative form,
 
-$$
+```math
 \partial_t U + \partial_x F(U) = 0, \qquad
 U = \begin{pmatrix} \rho \\ \rho u \\ E \end{pmatrix}, \qquad
 F(U) = \begin{pmatrix} \rho u \\ \rho u^2 + p \\ u\,(E + p) \end{pmatrix},
-$$
+```
 
 closed by the ideal-gas equation of state
 
-$$
+```math
 p = (\gamma - 1)\left(E - \tfrac12 \rho u^2\right), \qquad a = \sqrt{\gamma p / \rho},
-$$
+```
 
-with $\gamma = 1.4$ by default. A state is admissible if $\rho > 0$ and $p > 0$; the solver stops with an error if any interior cell leaves this set.
+with $`\gamma = 1.4`$ by default. A state is admissible if $`\rho > 0`$ and $`p > 0`$; the solver stops with an error if any interior cell leaves this set.
 
 ## Numerical method
 
-**Semi-discrete update.** On a uniform grid with cell width $\Delta x$, the cell averages evolve as
+**Semi-discrete update.** On a uniform grid with cell width $`\Delta x`$, the cell averages evolve as
 
-$$
+```math
 \frac{dU_j}{dt} = -\frac{\hat F_{j+1/2} - \hat F_{j-1/2}}{\Delta x},
-$$
+```
 
-where $\hat F_{j+1/2} = \hat F(W^L_{j+1/2}, W^R_{j+1/2})$ is a numerical flux evaluated from the reconstructed primitive states $W = (\rho, u, p)$ on both sides of the face.
+where $`\hat F_{j+1/2} = \hat F(W^L_{j+1/2}, W^R_{j+1/2})`$ is a numerical flux evaluated from the reconstructed primitive states $`W = (\rho, u, p)`$ on both sides of the face.
 
 **Rusanov flux** [9].
 
-$$
+```math
 \hat F = \tfrac12\left(F(W_L) + F(W_R)\right) - \tfrac12 s_{\max}\,\left(U_R - U_L\right), \qquad
 s_{\max} = \max\left(|u_L| + a_L,\; |u_R| + a_R\right).
-$$
+```
 
-**HLLC flux** [4] (Toro [1], Ch. 10). Wave speed estimates use Roe averages with $H = (E + p)/\rho$, $\sqrt{\rho}$ weights, and Einfeldt-type bounds [5]:
+**HLLC flux** [4] (Toro [1], Ch. 10). Wave speed estimates use Roe averages with $`H = (E + p)/\rho`$, $`\sqrt{\rho}`$ weights, and Einfeldt-type bounds [5]:
 
-$$
+```math
 \tilde u = \frac{\sqrt{\rho_L}\,u_L + \sqrt{\rho_R}\,u_R}{\sqrt{\rho_L} + \sqrt{\rho_R}}, \quad
 \tilde H = \frac{\sqrt{\rho_L}\,H_L + \sqrt{\rho_R}\,H_R}{\sqrt{\rho_L} + \sqrt{\rho_R}}, \quad
 \tilde a = \sqrt{(\gamma - 1)\left(\tilde H - \tfrac12 \tilde u^2\right)},
-$$
+```
 
-$$
+```math
 S_L = \min(u_L - a_L,\; \tilde u - \tilde a), \qquad S_R = \max(u_R + a_R,\; \tilde u + \tilde a).
-$$
+```
 
 The contact speed and star states are
 
-$$
-S_* = \frac{p_R - p_L + \rho_L u_L (S_L - u_L) - \rho_R u_R (S_R - u_R)}{\rho_L (S_L - u_L) - \rho_R (S_R - u_R)},
-$$
+```math
+S_{\ast} = \frac{p_R - p_L + \rho_L u_L (S_L - u_L) - \rho_R u_R (S_R - u_R)}{\rho_L (S_L - u_L) - \rho_R (S_R - u_R)},
+```
 
-$$
-U_{*K} = \rho_K \frac{S_K - u_K}{S_K - S_*}
-\begin{pmatrix} 1 \\ S_* \\ \dfrac{E_K}{\rho_K} + (S_* - u_K)\left(S_* + \dfrac{p_K}{\rho_K (S_K - u_K)}\right) \end{pmatrix}, \quad K \in \{L, R\},
-$$
+```math
+U_{\ast K} = \rho_K \frac{S_K - u_K}{S_K - S_{\ast}}
+\begin{pmatrix} 1 \\ S_{\ast} \\ \dfrac{E_K}{\rho_K} + (S_{\ast} - u_K)\left(S_{\ast} + \dfrac{p_K}{\rho_K (S_K - u_K)}\right) \end{pmatrix}, \quad K \in \{L, R\},
+```
 
-and the flux is $F(W_L)$ if $S_L \ge 0$; $F(W_L) + S_L (U_{*L} - U_L)$ if $S_L < 0 \le S_*$; $F(W_R) + S_R (U_{*R} - U_R)$ if $S_* < 0 < S_R$; and $F(W_R)$ if $S_R \le 0$.
+and the flux is $`F(W_L)`$ if $`S_L \ge 0`$; $`F(W_L) + S_L (U_{\ast L} - U_L)`$ if $`S_L < 0 \le S_{\ast}`$; $`F(W_R) + S_R (U_{\ast R} - U_R)`$ if $`S_{\ast} < 0 < S_R`$; and $`F(W_R)`$ if $`S_R \le 0`$.
 
-**MUSCL reconstruction** [7]. Each primitive component $q$ in cell $j$ gets a limited slope $\sigma_j = \phi(\Delta_-, \Delta_+)$ from the one-sided differences $\Delta_- = q_j - q_{j-1}$ and $\Delta_+ = q_{j+1} - q_j$. The face values are $q^L_{j+1/2} = q_j + \tfrac12 \sigma_j$ (left state of face $j+1/2$, `WL[f]` in the code) and $q^R_{j-1/2} = q_j - \tfrac12 \sigma_j$ (right state of face $j-1/2$, `WR[f]`). Three slope options are available:
+**MUSCL reconstruction** [7]. Each primitive component $`q`$ in cell $`j`$ gets a limited slope $`\sigma_j = \phi(\Delta_-, \Delta_+)`$ from the one-sided differences $`\Delta_- = q_j - q_{j-1}`$ and $`\Delta_+ = q_{j+1} - q_j`$. The face values are $`q^L_{j+1/2} = q_j + \tfrac12 \sigma_j`$ (left state of face $`j+1/2`$, `WL[f]` in the code) and $`q^R_{j-1/2} = q_j - \tfrac12 \sigma_j`$ (right state of face $`j-1/2`$, `WR[f]`). Three slope options are available:
 
-| Slope | $\phi(a, b)$ |
+| Slope | $`\phi(a, b)`$ |
 |---|---|
-| minmod | $0$ if $ab \le 0$, else $\operatorname{sign}(a)\min(\lvert a\rvert, \lvert b\rvert)$ |
-| van Leer [6] | $0$ if $ab \le 0$, else $2ab/(a + b)$ |
-| unlimited (central) | $\tfrac12 (a + b)$ |
+| minmod | $`0`$ if $`ab \le 0`$, else $`\mathrm{sign}(a)\min(\lvert a\rvert, \lvert b\rvert)`$ |
+| van Leer [6] | $`0`$ if $`ab \le 0`$, else $`2ab/(a + b)`$ |
+| unlimited (central) | $`\tfrac12 (a + b)`$ |
 
 The unlimited slope is not TVD and is intended only for smooth problems and for verifying the formal order of accuracy.
 
-**Time integration.** The strong-stability-preserving third-order Runge-Kutta scheme of Shu and Osher [8], with $L(U)$ the spatial operator above:
+**Time integration.** The strong-stability-preserving third-order Runge-Kutta scheme of Shu and Osher [8], with $`L(U)`$ the spatial operator above:
 
-$$
+```math
 \begin{aligned}
 U^{(1)} &= U^n + \Delta t\, L(U^n), \\
 U^{(2)} &= \tfrac34 U^n + \tfrac14\left(U^{(1)} + \Delta t\, L(U^{(1)})\right), \\
 U^{n+1} &= \tfrac13 U^n + \tfrac23\left(U^{(2)} + \Delta t\, L(U^{(2)})\right).
 \end{aligned}
-$$
+```
 
-The time step is computed once per step from $U^n$ as
+The time step is computed once per step from $`U^n`$ as
 
-$$
+```math
 \Delta t = \mathrm{CFL}\;\frac{\Delta x}{\max_j\left(\lvert u_j\rvert + a_j\right)}, \qquad 0 < \mathrm{CFL} \le 1,
-$$
+```
 
-and the last step is clipped so that the run ends exactly at $t_\text{final}$.
+and the last step is clipped so that the run ends exactly at $`t_\text{final}`$.
 
 ## Verification
 
 ### Density-wave convergence
 
-An initial density wave $\rho(x, 0) = \rho_0 + A \sin(2\pi k\,(x - x_\text{min})/L)$ with $\rho_0 = 1$, $A = 0.2$, $u = 1$, $p = 1$ and $k = 1$ is advected on a periodic domain $[0, 1]$ for exactly one period ($t = 1$), with $\mathrm{CFL} = 0.8$ and the HLLC flux. The exact solution is the translated profile, so the density error is measured against it. To avoid a spurious $O(\Delta x^2)$ mismatch between point values and finite-volume averages, both the initial condition and the error use the exact **cell averages**,
+An initial density wave $`\rho(x, 0) = \rho_0 + A \sin(2\pi k\,(x - x_\text{min})/L)`$ with $`\rho_0 = 1`$, $`A = 0.2`$, $`u = 1`$, $`p = 1`$ and $`k = 1`$ is advected on a periodic domain $`[0, 1]`$ for exactly one period ($`t = 1`$), with $`\mathrm{CFL} = 0.8`$ and the HLLC flux. The exact solution is the translated profile, so the density error is measured against it. To avoid a spurious $`O(\Delta x^2)`$ mismatch between point values and finite-volume averages, both the initial condition and the error use the exact **cell averages**,
 
-$$
+```math
 \bar\rho_j(t) = \rho_0 + A \sin\left(\kappa (x_j - u t - x_\text{min})\right)\,\frac{\sin(\kappa \Delta x / 2)}{\kappa \Delta x / 2}, \qquad \kappa = \frac{2\pi k}{L}.
-$$
+```
 
-Observed orders $p$ are computed between consecutive grids as $p = \log(e_\text{coarse}/e_\text{fine}) / \log(N_\text{fine}/N_\text{coarse})$.
+Observed orders $`p`$ are computed between consecutive grids as $`p = \log(e_\text{coarse}/e_\text{fine}) / \log(N_\text{fine}/N_\text{coarse})`$.
 
 **HLLC + MUSCL, unlimited slope**
 
@@ -144,17 +144,17 @@ Observed orders $p$ are computed between consecutive grids as $p = \log(e_\text{
 
 Observations:
 
-1. The unlimited MUSCL scheme reaches $p = 2.00$ in the L1, L2 and Linf norms. This confirms second-order accuracy of the reconstruction and of the contact-wave path of the flux, with SSP-RK3 and periodic boundaries. Because $u$ and $p$ are uniform, the test does not exercise the acoustic or nonlinear wave paths of the flux; those are covered by the shock-tube comparisons and the HLLC reference-value tests. The observed order reflects the spatial error, so it does not demonstrate the third-order accuracy of SSP-RK3.
-2. For a single sinusoidal error mode $A\sin(\cdot)$ the norms satisfy $L_2/L_1 = \pi/(2\sqrt2) \approx 1.1107$ and $L_\infty/L_1 = \pi/2 \approx 1.5708$. For the unlimited scheme on the finest grid ($N = 800$) the computed ratios are $L_2/L_1 = 1.1107$ and $L_\infty/L_1 = 1.5708$, and they stay within 0.1% of these values on all six grids. The error is therefore a single smooth mode, with no localized defects at the periodic boundary or in the ghost cells.
-3. TVD limiters clip smooth extrema, so the error concentrates near the crest and trough of the wave. This gives the observed hierarchy $p_{L_1} > p_{L_2} > p_{L_\infty}$ (for van Leer at $N = 800$: 2.04, 1.76, 1.42), and the ratios above are no longer constant: for van Leer, $L_\infty/L_1$ grows from 2.1 at $N = 25$ to 13.8 at $N = 800$.
+1. The unlimited MUSCL scheme reaches $`p = 2.00`$ in the L1, L2 and Linf norms. This confirms second-order accuracy of the reconstruction and of the contact-wave path of the flux, with SSP-RK3 and periodic boundaries. Because $`u`$ and $`p`$ are uniform, the test does not exercise the acoustic or nonlinear wave paths of the flux; those are covered by the shock-tube comparisons and the HLLC reference-value tests. The observed order reflects the spatial error, so it does not demonstrate the third-order accuracy of SSP-RK3.
+2. For a single sinusoidal error mode $`A\sin(\cdot)`$ the norms satisfy $`L_2/L_1 = \pi/(2\sqrt2) \approx 1.1107`$ and $`L_\infty/L_1 = \pi/2 \approx 1.5708`$. For the unlimited scheme on the finest grid ($`N = 800`$) the computed ratios are $`L_2/L_1 = 1.1107`$ and $`L_\infty/L_1 = 1.5708`$, and they stay within 0.1% of these values on all six grids. The error is therefore a single smooth mode, with no localized defects at the periodic boundary or in the ghost cells.
+3. TVD limiters clip smooth extrema, so the error concentrates near the crest and trough of the wave. This gives the observed hierarchy $`p_{L_1} > p_{L_2} > p_{L_\infty}`$ (for van Leer at $`N = 800`$: 2.04, 1.76, 1.42), and the ratios above are no longer constant: for van Leer, $`L_\infty/L_1`$ grows from 2.1 at $`N = 25`$ to 13.8 at $`N = 800`$.
 
 ### Shock tubes
 
-Both problems use $N = 200$ cells, transmissive boundaries, $\mathrm{CFL} = 0.8$, and are compared against the exact Riemann solution (`python/exact_riemann.py`, Toro Ch. 4). The Sod problem is the Sod shock tube (Sod 1978) [2], with the data as in Toro (2009) [1], Table 4.1, Test 1, run to $t = 0.2$ (figure at the top of this page); Lax's problem [3] is run to $t = 0.14$. All numbers below are taken from `sod_metrics.csv` and `lax_metrics.csv`, which `scripts/run_shock_tubes.sh` writes to `results/shock_tubes/`.
+Both problems use $`N = 200`$ cells, transmissive boundaries, $`\mathrm{CFL} = 0.8`$, and are compared against the exact Riemann solution (`python/exact_riemann.py`, Toro Ch. 4). The Sod problem is the Sod shock tube (Sod 1978) [2], with the data as in Toro (2009) [1], Table 4.1, Test 1, run to $`t = 0.2`$ (figure at the top of this page); Lax's problem [3] is run to $`t = 0.14`$. All numbers below are taken from `sod_metrics.csv` and `lax_metrics.csv`, which `scripts/run_shock_tubes.sh` writes to `results/shock_tubes/`.
 
 ![Lax shock tube comparison](docs/figures/lax_comparison.png)
 
-L1 error of the density against the exact solution at the cell centers ($N = 200$):
+L1 error of the density against the exact solution at the cell centers ($`N = 200`$):
 
 | Scheme | Sod | Lax |
 |---|---:|---:|
@@ -165,16 +165,16 @@ L1 error of the density against the exact solution at the cell centers ($N = 200
 
 In the figures, HLLC with MUSCL minmod spreads the density contact over visibly fewer cells than Rusanov with the same limiter. Separately, the whole-domain L1 density error in Sod is 4.274980e-03 for HLLC against 5.456449e-03 for Rusanov (a difference of 1.181469e-03, about 22% lower), and in Lax 1.649593e-02 against 2.065369e-02 (a difference of 4.15776e-03, about 20% lower). These L1 differences cover the whole domain (shock, contact and rarefaction) and are not attributed to the contact alone. Among the MUSCL variants, van Leer has the lowest L1 error.
 
-In the Sod problem, all four schemes slightly exceed the exact maximum of the specific internal energy $e$, $e_\text{max,exact} = 2.853541$, next to the contact. The overshoot $e_\text{max,numerical}/e_\text{max,exact} - 1$ is largest with van Leer and much smaller for the others:
+In the Sod problem, all four schemes slightly exceed the exact maximum of the specific internal energy $`e`$, $`e_\text{max,exact} = 2.853541`$, next to the contact. The overshoot $`e_\text{max,numerical}/e_\text{max,exact} - 1`$ is largest with van Leer and much smaller for the others:
 
-| Scheme | $e_\text{max}$ (numerical) | Overshoot |
+| Scheme | $`e_\text{max}`$ (numerical) | Overshoot |
 |---|---:|---:|
 | HLLC, first order | 2.856892 | 0.117% |
 | Rusanov, MUSCL minmod | 2.860467 | 0.243% |
 | HLLC, MUSCL minmod | 2.859243 | 0.200% |
 | HLLC, MUSCL van Leer | 2.882375 | 1.010% |
 
-This is expected: the TVD bound applies to the reconstructed primitive variables $(\rho, u, p)$, not to derived quantities such as $e = p/((\gamma-1)\rho)$. The Lax $e_\text{max}$ column is not used here, since it is the global maximum, located at the left boundary state.
+This is expected: the TVD bound applies to the reconstructed primitive variables $`(\rho, u, p)`$, not to derived quantities such as $`e = p/((\gamma-1)\rho)`$. The Lax $`e_\text{max}`$ column is not used here, since it is the global maximum, located at the left boundary state.
 
 ## Build and run
 
@@ -283,12 +283,12 @@ The GitHub Actions workflow has three jobs:
 
 - **build-test**: builds with GCC and Clang in Release mode with warnings as errors and runs `ctest`.
 - **sanitizers**: builds in Debug mode with AddressSanitizer and UBSan, with `-fno-sanitize-recover=all` and `halt_on_error=1`, so any report fails the job, and runs `ctest`.
-- **verification**: runs the Python tests and the grid-convergence study on $N = 50, 100, 200, 400$, then fails if the observed order on the finest grid leaves the expected range (unlimited MUSCL, L1 and Linf: 1.9-2.1; first-order HLLC, L1: 0.85-1.1). It also runs the Sod and Lax shock tubes and fails if the L1 density error of HLLC with MUSCL minmod exceeds 1.1 times its current value (Sod 4.702e-3, Lax 1.814e-2). The convergence report and the shock-tube metrics and figures are uploaded as workflow artifacts.
+- **verification**: runs the Python tests and the grid-convergence study on $`N = 50, 100, 200, 400`$, then fails if the observed order on the finest grid leaves the expected range (unlimited MUSCL, L1 and Linf: 1.9-2.1; first-order HLLC, L1: 0.85-1.1). It also runs the Sod and Lax shock tubes and fails if the L1 density error of HLLC with MUSCL minmod exceeds 1.1 times its current value (Sod 4.702e-3, Lax 1.814e-2). The convergence report and the shock-tube metrics and figures are uploaded as workflow artifacts.
 
 ## Roadmap
 
 - Smooth acoustic-wave convergence test
-- Temporal refinement study at fixed $\Delta x$ (to demonstrate the order of SSP-RK3)
+- Temporal refinement study at fixed $`\Delta x`$ (to demonstrate the order of SSP-RK3)
 - Roe flux with an entropy fix
 - WENO5 reconstruction
 - Characteristic-variable reconstruction
